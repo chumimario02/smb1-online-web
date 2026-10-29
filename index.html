@@ -113,7 +113,7 @@ body {
 		<script>
 const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":56163148,"index.wasm":37902138},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
-const engine = new Engine(GODOT_CONFIG);
+const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
 
 (function () {
 	const statusOverlay = document.getElementById('status');
@@ -215,6 +215,175 @@ const engine = new Engine(GODOT_CONFIG);
 	}
 }());
 		</script>
-	</body>
+	<!-- SMB1R Online web overlay: ROM picker (opens the system file explorer),
+     fullscreen toggle and on-screen touch controls. -->
+<style>
+  #smbUI, #smbUI * { box-sizing: border-box; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
+  #smbUI { position: fixed; inset: 0; pointer-events: none; z-index: 99999; }
+  #smbTop { position: absolute; top: 10px; right: 10px; display: flex; gap: 8px; pointer-events: auto; }
+  #smbTop button {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 12px; border-radius: 10px; cursor: pointer;
+    background: rgba(12, 14, 20, .82); color: #eef1f8; border: 1px solid rgba(255,255,255,.18);
+    font-size: 13px; font-weight: 600; backdrop-filter: blur(6px);
+  }
+  #smbTop button:hover { background: rgba(30, 34, 46, .95); }
+  #smbTop button.primary { background: #e52521; border-color: #ff6a63; }
+  #smbTop button.primary:hover { background: #f02d29; }
+
+  #smbTouch { position: absolute; inset: 0; display: none; pointer-events: none; }
+  #smbTouch.on { display: block; }
+  .smbPad { position: absolute; bottom: 22px; display: grid; gap: 10px; pointer-events: auto; }
+  #smbDpad { left: 20px; grid-template-columns: 64px 64px 64px; grid-template-rows: 64px 64px; }
+  #smbButtons { right: 20px; grid-template-columns: 72px 72px; grid-template-rows: 72px 72px; align-items: end; }
+  .smbBtn {
+    -webkit-user-select: none; user-select: none; touch-action: none;
+    display: grid; place-items: center;
+    width: 64px; height: 64px; border-radius: 14px;
+    background: rgba(15, 18, 27, .72); border: 2px solid rgba(255,255,255,.22);
+    color: #fff; font-size: 24px; font-weight: 800;
+    box-shadow: 0 6px 18px -8px rgba(0,0,0,.9);
+  }
+  .smbBtn:active { background: rgba(229, 37, 33, .75); transform: scale(.96); }
+  .smbRound { border-radius: 50%; width: 72px; height: 72px; font-size: 20px; }
+  #smbA { background: rgba(229,37,33,.72); border-color: #ff8b86; grid-column: 2; grid-row: 1; }
+  #smbB { background: rgba(4,156,216,.72); border-color: #8fd8f7; grid-column: 1; grid-row: 2; }
+  #smbStart { width: auto; height: 44px; padding: 0 18px; font-size: 13px; letter-spacing: .08em; grid-column: 1 / span 2; }
+  .smbHint { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.45); font-size: 11px; }
+  #smbRomMsg { position: absolute; top: 58px; right: 10px; max-width: 320px; padding: 10px 12px; border-radius: 10px; background: rgba(12,14,20,.92); border: 1px solid rgba(255,255,255,.18); color: #ffe9a3; font-size: 12.5px; display: none; }
+</style>
+
+<div id="smbUI">
+  <div id="smbTop">
+    <button id="smbRom" class="primary" title="Cargar tu ROM de SMB1 (.nes)">📁 ROM</button>
+    <button id="smbFull" title="Pantalla completa">⛶ Pantalla completa</button>
+    <button id="smbToggle" title="Mostrar/ocultar controles táctiles">🎮 Controles</button>
+  </div>
+  <div id="smbRomMsg"></div>
+
+  <div id="smbTouch">
+    <div class="smbPad" id="smbDpad">
+      <div></div>
+      <div class="smbBtn" data-k="up">▲</div>
+      <div></div>
+      <div class="smbBtn" data-k="left">◀</div>
+      <div class="smbBtn" data-k="down">▼</div>
+      <div class="smbBtn" data-k="right">▶</div>
+    </div>
+    <div class="smbPad" id="smbButtons">
+      <div class="smbBtn smbRound" id="smbA" data-k="a">A</div>
+      <div class="smbBtn smbRound" id="smbB" data-k="b">B</div>
+      <div class="smbBtn" id="smbStart" data-k="start">START</div>
+    </div>
+    <div class="smbHint">Arrastra para moverte · A = saltar · B = correr/fuego</div>
+  </div>
+</div>
+
+<input type="file" id="smbRomFile" accept=".nes,.NES,.nez,.unf,.unif" style="display:none">
+
+<script>
+(function () {
+  var KEYS = {
+    left:  { keyCode: 37, key: "ArrowLeft",  code: "ArrowLeft" },
+    right: { keyCode: 39, key: "ArrowRight", code: "ArrowRight" },
+    up:    { keyCode: 38, key: "ArrowUp",    code: "ArrowUp" },
+    down:  { keyCode: 40, key: "ArrowDown",  code: "ArrowDown" },
+    a:     { keyCode: 90, key: "z",          code: "KeyZ" },
+    b:     { keyCode: 88, key: "x",          code: "KeyX" },
+    start: { keyCode: 13, key: "Enter",      code: "Enter" }
+  };
+
+  function toast(text, ms) {
+    var el = document.getElementById("smbRomMsg");
+    el.textContent = text;
+    el.style.display = "block";
+    if (ms) setTimeout(function () { el.style.display = "none"; }, ms);
+  }
+
+  function fire(name, down) {
+    var k = KEYS[name];
+    if (!k) return;
+    var targets = [document.getElementById("canvas"), document, window];
+    targets.forEach(function (t) {
+      if (!t) return;
+      t.dispatchEvent(new KeyboardEvent(down ? "keydown" : "keyup", {
+        key: k.key, code: k.code, keyCode: k.keyCode, which: k.keyCode,
+        bubbles: true, cancelable: true
+      }));
+    });
+  }
+
+  document.querySelectorAll("[data-k]").forEach(function (el) {
+    var name = el.getAttribute("data-k");
+    var press = function (e) { e.preventDefault(); el.setPointerCapture && e.pointerId !== undefined && el.setPointerCapture(e.pointerId); fire(name, true); };
+    var release = function (e) { e.preventDefault(); fire(name, false); };
+    el.addEventListener("pointerdown", press);
+    el.addEventListener("pointerup", release);
+    el.addEventListener("pointercancel", release);
+    el.addEventListener("pointerleave", release);
+    el.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+  });
+
+  var touch = document.getElementById("smbTouch");
+  document.getElementById("smbToggle").addEventListener("click", function () {
+    touch.classList.toggle("on");
+    try { localStorage.setItem("smb_touch", touch.classList.contains("on") ? "1" : "0"); } catch (e) {}
+  });
+
+  var full = document.getElementById("smbFull");
+  full.addEventListener("click", function () {
+    if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+      var root = document.documentElement;
+      var req = root.requestFullscreen || root.webkitRequestFullscreen;
+      if (req) req.call(root).catch(function () {});
+    } else {
+      (document.exitFullscreen || document.webkitExitFullscreen).call(document);
+    }
+  });
+  document.addEventListener("fullscreenchange", function () {
+    full.textContent = document.fullscreenElement ? "⛶ Salir" : "⛶ Pantalla completa";
+  });
+
+  var input = document.getElementById("smbRomFile");
+  document.getElementById("smbRom").addEventListener("click", function () {
+    input.value = "";
+    input.click();
+  });
+  input.addEventListener("change", async function () {
+    var file = input.files && input.files[0];
+    if (!file) return;
+    var engine = window.godotEngine;
+    if (!engine || typeof engine.copyToFS !== "function") {
+      toast("El juego todavía está cargando. Espera unos segundos y vuelve a intentarlo.", 6000);
+      return;
+    }
+    try {
+      toast("Cargando ROM…");
+      var bytes = new Uint8Array(await file.arrayBuffer());
+      var result = engine.copyToFS("/userfs/baserom.nes", bytes);
+      if (result && typeof result.then === "function") await result;
+      toast("ROM cargada. Reiniciando…", 4000);
+      setTimeout(function () { location.reload(); }, 700);
+    } catch (err) {
+      console.error(err);
+      toast("No se pudo guardar la ROM: " + err, 8000);
+    }
+  });
+
+  // Touch controls on by default on phones/tablets, or if the user enabled them.
+  var isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
+  var saved = null;
+  try { saved = localStorage.getItem("smb_touch"); } catch (e) {}
+  if (saved === "1" || (isTouch && saved !== "0")) touch.classList.add("on");
+
+  // If the game shows the ROM screen, point people to the button.
+  setTimeout(function () {
+    if (!window.godotEngine) return;
+    toast("¿Te pide la ROM? Pulsa 📁 ROM y elige tu archivo .nes", 9000);
+  }, 12000);
+})();
+</script>
+
+</body>
 </html>
 
