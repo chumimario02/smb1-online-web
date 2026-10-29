@@ -111,7 +111,7 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":56163148,"index.wasm":37902138},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":56177604,"index.wasm":37902138},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
 
@@ -216,7 +216,7 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
 }());
 		</script>
 	<!-- SMB1R Online web overlay: ROM picker (opens the system file explorer),
-     fullscreen toggle and on-screen touch controls. -->
+     fullscreen toggle and a proper D-pad + buttons for touch devices. -->
 <style>
   #smbUI, #smbUI * { box-sizing: border-box; font-family: system-ui, -apple-system, "Segoe UI", sans-serif; }
   #smbUI { position: fixed; inset: 0; pointer-events: none; z-index: 99999; }
@@ -233,24 +233,55 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
 
   #smbTouch { position: absolute; inset: 0; display: none; pointer-events: none; }
   #smbTouch.on { display: block; }
-  .smbPad { position: absolute; bottom: 22px; display: grid; gap: 10px; pointer-events: auto; }
-  #smbDpad { left: 20px; grid-template-columns: 64px 64px 64px; grid-template-rows: 64px 64px; }
-  #smbButtons { right: 20px; grid-template-columns: 72px 72px; grid-template-rows: 72px 72px; align-items: end; }
-  .smbBtn {
-    -webkit-user-select: none; user-select: none; touch-action: none;
-    display: grid; place-items: center;
-    width: 64px; height: 64px; border-radius: 14px;
-    background: rgba(15, 18, 27, .72); border: 2px solid rgba(255,255,255,.22);
-    color: #fff; font-size: 24px; font-weight: 800;
-    box-shadow: 0 6px 18px -8px rgba(0,0,0,.9);
+
+  /* --- D-pad (cross shape, supports sliding between directions) --- */
+  #smbDpad {
+    position: absolute; left: 22px; bottom: 24px;
+    width: 186px; height: 186px; pointer-events: auto;
+    touch-action: none; -webkit-user-select: none; user-select: none;
+    filter: drop-shadow(0 10px 18px rgba(0,0,0,.55));
   }
-  .smbBtn:active { background: rgba(229, 37, 33, .75); transform: scale(.96); }
-  .smbRound { border-radius: 50%; width: 72px; height: 72px; font-size: 20px; }
-  #smbA { background: rgba(229,37,33,.72); border-color: #ff8b86; grid-column: 2; grid-row: 1; }
-  #smbB { background: rgba(4,156,216,.72); border-color: #8fd8f7; grid-column: 1; grid-row: 2; }
-  #smbStart { width: auto; height: 44px; padding: 0 18px; font-size: 13px; letter-spacing: .08em; grid-column: 1 / span 2; }
-  .smbHint { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.45); font-size: 11px; }
-  #smbRomMsg { position: absolute; top: 58px; right: 10px; max-width: 320px; padding: 10px 12px; border-radius: 10px; background: rgba(12,14,20,.92); border: 1px solid rgba(255,255,255,.18); color: #ffe9a3; font-size: 12.5px; display: none; }
+  .smbDir {
+    position: absolute; width: 62px; height: 62px;
+    display: grid; place-items: center;
+    background: rgba(18, 21, 31, .78);
+    border: 2px solid rgba(255,255,255,.20);
+    color: rgba(255,255,255,.92); font-size: 22px; line-height: 1;
+  }
+  .smbDir.up    { left: 62px; top: 0;    border-radius: 12px 12px 0 0; }
+  .smbDir.left  { left: 0;    top: 62px; border-radius: 12px 0 0 12px; }
+  .smbDir.right { left: 124px; top: 62px; border-radius: 0 12px 12px 0; }
+  .smbDir.down  { left: 62px; top: 124px; border-radius: 0 0 12px 12px; }
+  .smbDir.on { background: rgba(229, 37, 33, .85); border-color: #ff8b86; color: #fff; }
+  #smbDpadCore {
+    position: absolute; left: 62px; top: 62px; width: 62px; height: 62px;
+    background: rgba(18, 21, 31, .85); border: 2px solid rgba(255,255,255,.16);
+    display: grid; place-items: center; color: rgba(255,255,255,.25); font-size: 20px;
+  }
+  #smbDpadCore::before { content: "✛"; }
+
+  /* --- A / B / START --- */
+  #smbButtons { position: absolute; right: 22px; bottom: 24px; width: 172px; height: 150px; pointer-events: auto; touch-action: none; }
+  .smbRound {
+    position: absolute; width: 76px; height: 76px; border-radius: 50%;
+    display: grid; place-items: center; font-size: 24px; font-weight: 800; color: #fff;
+    border: 2px solid rgba(255,255,255,.28);
+    box-shadow: 0 10px 20px -8px rgba(0,0,0,.8);
+    -webkit-user-select: none; user-select: none;
+  }
+  #smbA { right: 0; bottom: 26px; background: rgba(229,37,33,.78); border-color: #ff8b86; }
+  #smbB { left: 0; bottom: 0; background: rgba(4,156,216,.78); border-color: #8fd8f7; }
+  #smbA.on, #smbB.on { filter: brightness(1.35); transform: scale(.96); }
+  #smbStart {
+    position: absolute; right: 8px; top: 0; height: 34px; padding: 0 16px;
+    border-radius: 17px; background: rgba(18,21,31,.8); border: 2px solid rgba(255,255,255,.2);
+    color: #dbe4ff; font-size: 11px; font-weight: 700; letter-spacing: .1em;
+    display: grid; place-items: center; -webkit-user-select: none; user-select: none;
+  }
+  #smbStart.on { background: rgba(67,176,71,.85); border-color: #8ee092; }
+
+  .smbHint { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.4); font-size: 11px; white-space: nowrap; }
+  #smbRomMsg { position: absolute; top: 58px; right: 10px; max-width: 340px; padding: 10px 12px; border-radius: 10px; background: rgba(12,14,20,.94); border: 1px solid rgba(255,255,255,.18); color: #ffe9a3; font-size: 12.5px; display: none; }
 </style>
 
 <div id="smbUI">
@@ -262,20 +293,19 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
   <div id="smbRomMsg"></div>
 
   <div id="smbTouch">
-    <div class="smbPad" id="smbDpad">
-      <div></div>
-      <div class="smbBtn" data-k="up">▲</div>
-      <div></div>
-      <div class="smbBtn" data-k="left">◀</div>
-      <div class="smbBtn" data-k="down">▼</div>
-      <div class="smbBtn" data-k="right">▶</div>
+    <div id="smbDpad">
+      <div class="smbDir up"    data-k="up">▲</div>
+      <div class="smbDir left"  data-k="left">◀</div>
+      <div id="smbDpadCore"></div>
+      <div class="smbDir right" data-k="right">▶</div>
+      <div class="smbDir down"  data-k="down">▼</div>
     </div>
-    <div class="smbPad" id="smbButtons">
-      <div class="smbBtn smbRound" id="smbA" data-k="a">A</div>
-      <div class="smbBtn smbRound" id="smbB" data-k="b">B</div>
-      <div class="smbBtn" id="smbStart" data-k="start">START</div>
+    <div id="smbButtons">
+      <div class="smbRound" id="smbA" data-k="a">A</div>
+      <div class="smbRound" id="smbB" data-k="b">B</div>
+      <div id="smbStart" data-k="start">START</div>
     </div>
-    <div class="smbHint">Arrastra para moverte · A = saltar · B = correr/fuego</div>
+    <div class="smbHint">Desliza el dedo en el D-pad · A = saltar · B = correr/fuego</div>
   </div>
 </div>
 
@@ -303,8 +333,7 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
   function fire(name, down) {
     var k = KEYS[name];
     if (!k) return;
-    var targets = [document.getElementById("canvas"), document, window];
-    targets.forEach(function (t) {
+    [document.getElementById("canvas"), document, window].forEach(function (t) {
       if (!t) return;
       t.dispatchEvent(new KeyboardEvent(down ? "keydown" : "keyup", {
         key: k.key, code: k.code, keyCode: k.keyCode, which: k.keyCode,
@@ -313,10 +342,50 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
     });
   }
 
-  document.querySelectorAll("[data-k]").forEach(function (el) {
+  /* ---------------- D-pad with drag support ---------------- */
+  var pad = document.getElementById("smbDpad");
+  var dirEls = { left: pad.querySelector(".left"), right: pad.querySelector(".right"), up: pad.querySelector(".up"), down: pad.querySelector(".down") };
+  var activeDir = null;
+
+  function dirFromPoint(clientX, clientY) {
+    var r = pad.getBoundingClientRect();
+    var x = clientX - (r.left + r.width / 2);
+    var y = clientY - (r.top + r.height / 2);
+    var dead = r.width * 0.10;
+    if (Math.abs(x) < dead && Math.abs(y) < dead) return null;
+    if (Math.abs(x) > Math.abs(y)) return x < 0 ? "left" : "right";
+    return y < 0 ? "up" : "down";
+  }
+
+  function setDir(dir) {
+    if (dir === activeDir) return;
+    if (activeDir && dirEls[activeDir]) dirEls[activeDir].classList.remove("on");
+    if (activeDir) fire(activeDir, false);
+    activeDir = dir;
+    if (activeDir && dirEls[activeDir]) dirEls[activeDir].classList.add("on");
+    if (activeDir) fire(activeDir, true);
+  }
+
+  pad.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    try { pad.setPointerCapture(e.pointerId); } catch (err) {}
+    setDir(dirFromPoint(e.clientX, e.clientY));
+  });
+  pad.addEventListener("pointermove", function (e) {
+    if (activeDir === null && e.buttons === 0 && e.pointerType === "mouse") return;
+    if (e.buttons === 0 && e.pointerType !== "touch" && e.pointerType !== "pen") return;
+    setDir(dirFromPoint(e.clientX, e.clientY));
+  });
+  pad.addEventListener("pointerup", function (e) { e.preventDefault(); setDir(null); });
+  pad.addEventListener("pointercancel", function () { setDir(null); });
+  pad.addEventListener("pointerleave", function () { setDir(null); });
+  pad.addEventListener("contextmenu", function (e) { e.preventDefault(); });
+
+  /* ---------------- A / B / START ---------------- */
+  document.querySelectorAll("#smbButtons [data-k]").forEach(function (el) {
     var name = el.getAttribute("data-k");
-    var press = function (e) { e.preventDefault(); el.setPointerCapture && e.pointerId !== undefined && el.setPointerCapture(e.pointerId); fire(name, true); };
-    var release = function (e) { e.preventDefault(); fire(name, false); };
+    var press = function (e) { e.preventDefault(); el.classList.add("on"); fire(name, true); };
+    var release = function (e) { e.preventDefault(); el.classList.remove("on"); fire(name, false); };
     el.addEventListener("pointerdown", press);
     el.addEventListener("pointerup", release);
     el.addEventListener("pointercancel", release);
@@ -324,6 +393,7 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
     el.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   });
 
+  /* ---------------- toolbar ---------------- */
   var touch = document.getElementById("smbTouch");
   document.getElementById("smbToggle").addEventListener("click", function () {
     touch.classList.toggle("on");
@@ -344,6 +414,7 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
     full.textContent = document.fullscreenElement ? "⛶ Salir" : "⛶ Pantalla completa";
   });
 
+  /* ---------------- ROM picker ---------------- */
   var input = document.getElementById("smbRomFile");
   document.getElementById("smbRom").addEventListener("click", function () {
     input.value = "";
@@ -352,35 +423,39 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
   input.addEventListener("change", async function () {
     var file = input.files && input.files[0];
     if (!file) return;
-    var engine = window.godotEngine;
-    if (!engine || typeof engine.copyToFS !== "function") {
-      toast("El juego todavía está cargando. Espera unos segundos y vuelve a intentarlo.", 6000);
-      return;
-    }
     try {
       toast("Cargando ROM…");
       var bytes = new Uint8Array(await file.arrayBuffer());
-      var result = engine.copyToFS("/userfs/baserom.nes", bytes);
-      if (result && typeof result.then === "function") await result;
-      toast("ROM cargada. Reiniciando…", 4000);
-      setTimeout(function () { location.reload(); }, 700);
+      // 1) localStorage: survives reloads and is read by the game on boot.
+      var bin = "";
+      for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+      localStorage.setItem("smb_rom", btoa(bin));
+      localStorage.setItem("smb_rom_name", file.name);
+      // 2) Best effort: also drop it into the virtual filesystem.
+      try {
+        var engine = window.godotEngine;
+        if (engine && typeof engine.copyToFS === "function") engine.copyToFS("/userfs/baserom.nes", bytes);
+      } catch (err) { /* the game imports from localStorage anyway */ }
+      toast("ROM guardada. Reiniciando…", 3000);
+      setTimeout(function () { location.reload(); }, 600);
     } catch (err) {
       console.error(err);
-      toast("No se pudo guardar la ROM: " + err, 8000);
+      toast("No se pudo leer la ROM: " + err, 8000);
     }
   });
 
-  // Touch controls on by default on phones/tablets, or if the user enabled them.
+  /* ---------------- defaults ---------------- */
   var isTouch = ("ontouchstart" in window) || navigator.maxTouchPoints > 0;
   var saved = null;
   try { saved = localStorage.getItem("smb_touch"); } catch (e) {}
   if (saved === "1" || (isTouch && saved !== "0")) touch.classList.add("on");
 
-  // If the game shows the ROM screen, point people to the button.
   setTimeout(function () {
-    if (!window.godotEngine) return;
-    toast("¿Te pide la ROM? Pulsa 📁 ROM y elige tu archivo .nes", 9000);
-  }, 12000);
+    var name = null;
+    try { name = localStorage.getItem("smb_rom_name"); } catch (e) {}
+    if (name) toast("ROM cargada: " + name + " · Pulsa 📁 ROM para cambiarla", 7000);
+    else toast("¿Te pide la ROM? Pulsa 📁 ROM y elige tu archivo .nes", 9000);
+  }, 9000);
 })();
 </script>
 
