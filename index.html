@@ -231,6 +231,14 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
   #smbTop button.primary { background: #e52521; border-color: #ff6a63; }
   #smbTop button.primary:hover { background: #f02d29; }
 
+  #smbSizeWrap {
+    display: flex; align-items: center; gap: 8px; height: 36px; padding: 0 10px;
+    border-radius: 10px; background: rgba(12, 14, 20, .82);
+    border: 1px solid rgba(255,255,255,.18); backdrop-filter: blur(6px);
+  }
+  #smbSizeRange { width: 92px; accent-color: #fbd000; cursor: pointer; }
+  #smbSizeLabel { font-size: 11px; font-weight: 700; color: #ffe9a3; min-width: 34px; text-align: center; }
+
   #smbTouch { position: absolute; inset: 0; display: none; pointer-events: none; }
   #smbTouch.on { display: block; }
 
@@ -302,7 +310,10 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
     <button id="smbRom" class="primary" title="Cargar tu ROM de SMB1 (.nes)">📁 ROM</button>
     <button id="smbFull" title="Pantalla completa">⛶ Pantalla completa</button>
     <button id="smbToggle" title="Mostrar/ocultar controles táctiles">🎮 Controles</button>
-    <button id="smbSize" title="Tamaño de los controles">🕹 Tamaño</button>
+    <div id="smbSizeWrap" title="Tamaño de los controles">
+      <input id="smbSizeRange" type="range" min="0.7" max="1.6" step="0.05" value="1">
+      <span id="smbSizeLabel">100%</span>
+    </div>
   </div>
   <div id="smbRomMsg"></div>
 
@@ -426,24 +437,23 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
     try { localStorage.setItem("smb_touch", touch.classList.contains("on") ? "1" : "0"); } catch (e) {}
   });
 
-  /* tamaño de los controles */
-  var sizeBtn = document.getElementById("smbSize");
-  var scales = [0.8, 1.0, 1.2, 1.4];
-  var scaleIndex = 1;
+  /* tamaño de los controles (barra deslizante) */
+  var sizeRange = document.getElementById("smbSizeRange");
+  var sizeLabel = document.getElementById("smbSizeLabel");
   try {
     var storedScale = parseFloat(localStorage.getItem("smb_pad_scale"));
-    var foundIdx = scales.indexOf(storedScale);
-    if (foundIdx >= 0) scaleIndex = foundIdx;
+    if (!isNaN(storedScale) && storedScale >= 0.7 && storedScale <= 1.6) {
+      sizeRange.value = String(storedScale);
+    }
   } catch (e) {}
   function applyPadScale() {
-    touch.style.setProperty("--pad-scale", String(scales[scaleIndex]));
-    sizeBtn.textContent = "🕹 " + Math.round(scales[scaleIndex] * 100) + "%";
+    var value = parseFloat(sizeRange.value);
+    touch.style.setProperty("--pad-scale", String(value));
+    sizeLabel.textContent = Math.round(value * 100) + "%";
+    try { localStorage.setItem("smb_pad_scale", String(value)); } catch (e) {}
   }
-  sizeBtn.addEventListener("click", function () {
-    scaleIndex = (scaleIndex + 1) % scales.length;
-    applyPadScale();
-    try { localStorage.setItem("smb_pad_scale", String(scales[scaleIndex])); } catch (e) {}
-  });
+  sizeRange.addEventListener("input", applyPadScale);
+  sizeRange.addEventListener("change", applyPadScale);
   applyPadScale();
 
   var full = document.getElementById("smbFull");  full.addEventListener("click", function () {
