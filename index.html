@@ -111,7 +111,7 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":56172072,"index.wasm":35740641},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":56172216,"index.wasm":35740641},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
 
@@ -282,12 +282,16 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
   }
   #smbRun.on { background: #ffd93d; box-shadow: 0 0 20px rgba(251,208,0,.9); transform: scale(.97); }
   #smbStart {
-    position: absolute; right: 8px; top: 0; height: 34px; padding: 0 16px;
+    position: absolute; left: 0; top: 0; height: 34px; padding: 0 14px;
     border-radius: 17px; background: rgba(18,21,31,.8); border: 2px solid rgba(255,255,255,.2);
     color: #dbe4ff; font-size: 11px; font-weight: 700; letter-spacing: .1em;
     display: grid; place-items: center; -webkit-user-select: none; user-select: none;
   }
   #smbStart.on { background: rgba(67,176,71,.85); border-color: #8ee092; }
+
+  #smbTouch { --pad-scale: 1; }
+  #smbDpad { transform: scale(var(--pad-scale)); transform-origin: bottom left; }
+  #smbButtons { transform: scale(var(--pad-scale)); transform-origin: bottom right; }
 
   .smbHint { position: absolute; bottom: 4px; left: 50%; transform: translateX(-50%); color: rgba(255,255,255,.4); font-size: 11px; white-space: nowrap; }
   #smbRomMsg { position: absolute; top: 58px; right: 10px; max-width: 340px; padding: 10px 12px; border-radius: 10px; background: rgba(12,14,20,.94); border: 1px solid rgba(255,255,255,.18); color: #ffe9a3; font-size: 12.5px; display: none; }
@@ -298,6 +302,7 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
     <button id="smbRom" class="primary" title="Cargar tu ROM de SMB1 (.nes)">📁 ROM</button>
     <button id="smbFull" title="Pantalla completa">⛶ Pantalla completa</button>
     <button id="smbToggle" title="Mostrar/ocultar controles táctiles">🎮 Controles</button>
+    <button id="smbSize" title="Tamaño de los controles">🕹 Tamaño</button>
   </div>
   <div id="smbRomMsg"></div>
 
@@ -421,8 +426,27 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
     try { localStorage.setItem("smb_touch", touch.classList.contains("on") ? "1" : "0"); } catch (e) {}
   });
 
-  var full = document.getElementById("smbFull");
-  full.addEventListener("click", function () {
+  /* tamaño de los controles */
+  var sizeBtn = document.getElementById("smbSize");
+  var scales = [0.8, 1.0, 1.2, 1.4];
+  var scaleIndex = 1;
+  try {
+    var storedScale = parseFloat(localStorage.getItem("smb_pad_scale"));
+    var foundIdx = scales.indexOf(storedScale);
+    if (foundIdx >= 0) scaleIndex = foundIdx;
+  } catch (e) {}
+  function applyPadScale() {
+    touch.style.setProperty("--pad-scale", String(scales[scaleIndex]));
+    sizeBtn.textContent = "🕹 " + Math.round(scales[scaleIndex] * 100) + "%";
+  }
+  sizeBtn.addEventListener("click", function () {
+    scaleIndex = (scaleIndex + 1) % scales.length;
+    applyPadScale();
+    try { localStorage.setItem("smb_pad_scale", String(scales[scaleIndex])); } catch (e) {}
+  });
+  applyPadScale();
+
+  var full = document.getElementById("smbFull");  full.addEventListener("click", function () {
     if (!document.fullscreenElement && !document.webkitFullscreenElement) {
       var root = document.documentElement;
       var req = root.requestFullscreen || root.webkitRequestFullscreen;
