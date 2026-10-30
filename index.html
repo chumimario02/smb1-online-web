@@ -111,7 +111,7 @@ body {
 
 		<script src="index.js"></script>
 		<script>
-const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":56166056,"index.wasm":35740641},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
+const GODOT_CONFIG = {"args":[],"canvasResizePolicy":2,"emscriptenPoolSize":8,"ensureCrossOriginIsolationHeaders":true,"executable":"index","experimentalVK":false,"fileSizes":{"index.pck":56166200,"index.wasm":35740641},"focusCanvas":true,"gdextensionLibs":[],"godotPoolSize":4};
 const GODOT_THREADS_ENABLED = false;
 const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
 
@@ -261,7 +261,7 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
   #smbDpadCore::before { content: "✛"; }
 
   /* --- A / B / START --- */
-  #smbButtons { position: absolute; right: 22px; bottom: 24px; width: 172px; height: 150px; pointer-events: auto; touch-action: none; }
+  #smbButtons { position: absolute; right: 22px; bottom: 24px; width: 172px; height: 186px; pointer-events: auto; touch-action: none; }
   .smbRound {
     position: absolute; width: 76px; height: 76px; border-radius: 50%;
     display: grid; place-items: center; font-size: 24px; font-weight: 800; color: #fff;
@@ -272,6 +272,15 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
   #smbA { right: 0; bottom: 26px; background: rgba(229,37,33,.78); border-color: #ff8b86; }
   #smbB { left: 0; bottom: 0; background: rgba(4,156,216,.78); border-color: #8fd8f7; }
   #smbA.on, #smbB.on { filter: brightness(1.35); transform: scale(.96); }
+  #smbRun {
+    position: absolute; right: 0; bottom: 116px; width: 76px; height: 46px;
+    border-radius: 23px; display: grid; place-items: center;
+    background: rgba(251,208,0,.78); border: 2px solid #ffe680; color: #3a2600;
+    font-size: 13px; font-weight: 800; letter-spacing: .08em;
+    box-shadow: 0 8px 18px -8px rgba(0,0,0,.8);
+    -webkit-user-select: none; user-select: none;
+  }
+  #smbRun.on { background: #ffd93d; box-shadow: 0 0 20px rgba(251,208,0,.9); transform: scale(.97); }
   #smbStart {
     position: absolute; right: 8px; top: 0; height: 34px; padding: 0 16px;
     border-radius: 17px; background: rgba(18,21,31,.8); border: 2px solid rgba(255,255,255,.2);
@@ -303,9 +312,10 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
     <div id="smbButtons">
       <div class="smbRound" id="smbA" data-k="a">A</div>
       <div class="smbRound" id="smbB" data-k="b">B</div>
+      <div id="smbRun">RUN</div>
       <div id="smbStart" data-k="start">START</div>
     </div>
-    <div class="smbHint">Desliza el dedo en el D-pad · A = saltar · B = correr/fuego</div>
+    <div class="smbHint">D-pad para moverte · A = saltar · B = correr/fuego · RUN mantiene B</div>
   </div>
 </div>
 
@@ -392,6 +402,17 @@ const engine = new Engine(GODOT_CONFIG); window.godotEngine = engine;
     el.addEventListener("pointerleave", release);
     el.addEventListener("contextmenu", function (e) { e.preventDefault(); });
   });
+
+  /* ---------------- RUN (mantiene B) ---------------- */
+  var runHeld = false;
+  var runBtn = document.getElementById("smbRun");
+  runBtn.addEventListener("pointerdown", function (e) {
+    e.preventDefault();
+    runHeld = !runHeld;
+    runBtn.classList.toggle("on", runHeld);
+    fire("b", runHeld);
+  });
+  runBtn.addEventListener("contextmenu", function (e) { e.preventDefault(); });
 
   /* ---------------- toolbar ---------------- */
   var touch = document.getElementById("smbTouch");
